@@ -43,12 +43,8 @@ esp_err_t AudioResampler::add_sink(speaker::Speaker *speaker) {
 }
 #endif
 
-// esp_err_t AudioResampler::add_sink(CallbackManager<void(const std::vector<uint8_t> &)> *callback_manager) {
-esp_err_t AudioResampler::add_sink(AudioSinkCallback *callback) {
-
-  this->output_transfer_buffer_->set_sink(callback);
-//   void set_sink(AudioSinkCallback *callback) { this->sink_callback_ = callback; }
-//   this->output_transfer_buffer_->set_sink(callback_manager);
+esp_err_t AudioResampler::add_sink(CallbackManager<void(const std::vector<uint8_t> &)> *callback_manager) {
+  this->output_transfer_buffer_->set_sink(callback_manager);
   return ESP_OK;
 }
 
