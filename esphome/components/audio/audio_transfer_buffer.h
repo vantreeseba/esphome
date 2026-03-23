@@ -130,11 +130,8 @@ class AudioSinkTransferBuffer : public AudioTransferBuffer {
 #ifdef USE_SPEAKER
   speaker::Speaker *speaker_{nullptr};
 #endif
-<<<<<<< HEAD
-  CallbackManager<void(const std::vector<uint8_t> &)> *data_callbacks_{nullptr};
-=======
+//   CallbackManager<void(const std::vector<uint8_t> &)> *data_callbacks_{nullptr};
   AudioSinkCallback *sink_callback_{nullptr};
->>>>>>> origin/dev
 };
 
 /// @brief Abstract interface for reading audio data from a buffer.
