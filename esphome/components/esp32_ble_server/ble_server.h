@@ -12,7 +12,6 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
-#include <unordered_set>
 #include <functional>
 
 #ifdef USE_ESP32
@@ -33,12 +32,15 @@ class BLEServer : public Component, public GATTsEventHandler, public BLEStatusEv
   float get_setup_priority() const override;
   bool can_proceed() override;
 
-  bool is_running();
+  ESPHOME_ALWAYS_INLINE bool is_running() { return this->parent_->is_active() && this->state_ == RUNNING; }
 
   void set_manufacturer_data(const std::vector<uint8_t> &data) {
     this->manufacturer_data_ = data;
     this->restart_advertising_();
   }
+
+  void set_max_clients(uint8_t max_clients) { this->max_clients_ = max_clients; }
+  uint8_t get_max_clients() const { return this->max_clients_; }
 
   BLEService *create_service(ESPBTUUID uuid, bool advertise = false, uint16_t num_handles = 15);
   void remove_service(ESPBTUUID uuid, uint8_t inst_id = 0);
@@ -47,8 +49,9 @@ class BLEServer : public Component, public GATTsEventHandler, public BLEStatusEv
   void set_device_information_service(BLEService *service) { this->device_information_service_ = service; }
 
   esp_gatt_if_t get_gatts_if() { return this->gatts_if_; }
-  uint32_t get_connected_client_count() { return this->clients_.size(); }
-  const std::unordered_set<uint16_t> &get_clients() { return this->clients_; }
+  uint32_t get_connected_client_count() { return this->client_count_; }
+  const uint16_t *get_clients() const { return this->clients_; }
+  uint8_t get_client_count() const { return this->client_count_; }
 
   void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
                            esp_ble_gatts_cb_param_t *param) override;
@@ -82,8 +85,9 @@ class BLEServer : public Component, public GATTsEventHandler, public BLEStatusEv
 
   void restart_advertising_();
 
-  void add_client_(uint16_t conn_id) { this->clients_.insert(conn_id); }
-  void remove_client_(uint16_t conn_id) { this->clients_.erase(conn_id); }
+  int8_t find_client_index_(uint16_t conn_id) const;
+  void add_client_(uint16_t conn_id);
+  void remove_client_(uint16_t conn_id);
   void dispatch_callbacks_(CallbackType type, uint16_t conn_id);
 
   std::vector<CallbackEntry> callbacks_;
@@ -92,7 +96,9 @@ class BLEServer : public Component, public GATTsEventHandler, public BLEStatusEv
   esp_gatt_if_t gatts_if_{0};
   bool registered_{false};
 
-  std::unordered_set<uint16_t> clients_;
+  uint16_t clients_[USE_ESP32_BLE_MAX_CONNECTIONS]{};
+  uint8_t client_count_{0};
+  uint8_t max_clients_{1};
   std::vector<ServiceEntry> services_{};
   std::vector<BLEService *> services_to_start_{};
   BLEService *device_information_service_{};

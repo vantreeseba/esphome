@@ -6,14 +6,14 @@ import hashlib
 import io
 import logging
 from pathlib import Path
-import random
+import secrets
 import socket
 import sys
 import time
 from typing import Any
 
 from esphome.core import EsphomeError
-from esphome.helpers import resolve_ip_address
+from esphome.helpers import ProgressBar, resolve_ip_address
 
 RESPONSE_OK = 0x00
 RESPONSE_REQUEST_AUTH = 0x01
@@ -61,30 +61,6 @@ _AUTH_METHODS: dict[int, tuple[Callable[..., Any], int, str]] = {
     RESPONSE_REQUEST_SHA256_AUTH: (hashlib.sha256, 64, "SHA256"),
     RESPONSE_REQUEST_AUTH: (hashlib.md5, 32, "MD5"),
 }
-
-
-class ProgressBar:
-    def __init__(self):
-        self.last_progress = None
-
-    def update(self, progress):
-        bar_length = 60
-        status = ""
-        if progress >= 1:
-            progress = 1
-            status = "Done...\r\n"
-        new_progress = int(progress * 100)
-        if new_progress == self.last_progress:
-            return
-        self.last_progress = new_progress
-        block = int(round(bar_length * progress))
-        text = f"\rUploading: [{'=' * block + ' ' * (bar_length - block)}] {new_progress}% {status}"
-        sys.stderr.write(text)
-        sys.stderr.flush()
-
-    def done(self):
-        sys.stderr.write("\n")
-        sys.stderr.flush()
 
 
 class OTAError(EsphomeError):
@@ -154,6 +130,12 @@ def check_error(data: list[int] | bytes, expect: int | list[int] | None) -> None
     """
     if not expect:
         return
+    if not data:
+        raise OTAError(
+            "Error: Device closed connection without responding. "
+            "This may indicate the device ran out of memory, "
+            "a network issue, or the connection was interrupted."
+        )
     dat = data[0]
     if dat == RESPONSE_ERROR_MAGIC:
         raise OTAError("Error: Invalid magic byte")
@@ -242,7 +224,7 @@ def send_check(
 
 
 def perform_ota(
-    sock: socket.socket, password: str, file_handle: io.IOBase, filename: Path
+    sock: socket.socket, password: str | None, file_handle: io.IOBase, filename: Path
 ) -> None:
     file_contents = file_handle.read()
     file_size = len(file_contents)
@@ -278,13 +260,13 @@ def perform_ota(
 
     def perform_auth(
         sock: socket.socket,
-        password: str,
+        password: str | None,
         hash_func: Callable[..., Any],
         nonce_size: int,
         hash_name: str,
     ) -> None:
         """Perform challenge-response authentication using specified hash algorithm."""
-        if not password:
+        if password is None:
             raise OTAError("ESP requests password, but no password given!")
 
         nonce_bytes = receive_exactly(
@@ -294,8 +276,8 @@ def perform_ota(
         nonce = nonce_bytes.decode()
         _LOGGER.debug("Auth: %s Nonce is %s", hash_name, nonce)
 
-        # Generate cnonce
-        cnonce = hash_func(str(random.random()).encode()).hexdigest()
+        # Generate cnonce matching the hash algorithm's digest size
+        cnonce = secrets.token_hex(nonce_size // 2)
         _LOGGER.debug("Auth: %s CNonce is %s", hash_name, cnonce)
 
         send_check(sock, cnonce, "auth cnonce")
@@ -322,8 +304,8 @@ def perform_ota(
         hash_func, nonce_size, hash_name = _AUTH_METHODS[auth]
         perform_auth(sock, password, hash_func, nonce_size, hash_name)
 
-    # Set higher timeout during upload
-    sock.settimeout(30.0)
+    # Timeout must match device-side OTA_SOCKET_TIMEOUT_DATA to prevent premature failures
+    sock.settimeout(90.0)
 
     upload_size = len(upload_contents)
     upload_size_encoded = [
@@ -385,7 +367,7 @@ def perform_ota(
 
 
 def run_ota_impl_(
-    remote_host: str | list[str], remote_port: int, password: str, filename: Path
+    remote_host: str | list[str], remote_port: int, password: str | None, filename: Path
 ) -> tuple[int, str | None]:
     from esphome.core import CORE
 
@@ -400,9 +382,11 @@ def run_ota_impl_(
             "Error resolving IP address of %s. Is it connected to WiFi?",
             remote_host,
         )
+        if not CORE.dashboard:
+            _LOGGER.error("(If you know the IP, try --device <IP>)")
         _LOGGER.error(
             "(If this error persists, please set a static IP address: "
-            "https://esphome.io/components/wifi.html#manual-ips)"
+            "https://esphome.io/components/wifi/#manual-ips)"
         )
         raise OTAError(err) from err
 
@@ -410,7 +394,7 @@ def run_ota_impl_(
         af, socktype, _, _, sa = r
         _LOGGER.info("Connecting to %s port %s...", sa[0], sa[1])
         sock = socket.socket(af, socktype)
-        sock.settimeout(10.0)
+        sock.settimeout(20.0)
         try:
             sock.connect(sa)
         except OSError as err:
@@ -436,7 +420,7 @@ def run_ota_impl_(
 
 
 def run_ota(
-    remote_host: str | list[str], remote_port: int, password: str, filename: Path
+    remote_host: str | list[str], remote_port: int, password: str | None, filename: Path
 ) -> tuple[int, str | None]:
     try:
         return run_ota_impl_(remote_host, remote_port, password, filename)
