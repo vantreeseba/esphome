@@ -129,7 +129,7 @@ class AudioSinkTransferBuffer : public AudioTransferBuffer {
 #ifdef USE_SPEAKER
   speaker::Speaker *speaker_{nullptr};
 #endif
-//   CallbackManager<void(const std::vector<uint8_t> &)> *data_callbacks_{nullptr};
+  CallbackManager<void(const std::vector<uint8_t> &)> *data_callbacks_{nullptr};
   AudioSinkCallback *sink_callback_{nullptr};
 };
 
