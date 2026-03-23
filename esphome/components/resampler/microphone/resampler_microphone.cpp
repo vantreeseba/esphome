@@ -109,7 +109,7 @@ void ResamplerMicrophone::loop() {
 
   if (event_group_bits & ResamplingEventGroupBits::WARNING_FULL_RING_BUFFER) {
     xEventGroupClearBits(this->event_group_, ResamplingEventGroupBits::WARNING_FULL_RING_BUFFER);
-    this.ring_buffer_.reset();
+    this->ring_buffer_.reset();
     ESP_LOGW(TAG, "Ring buffer full, resetting it.");
   }
 
