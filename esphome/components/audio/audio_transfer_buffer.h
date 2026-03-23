@@ -114,10 +114,6 @@ class AudioSinkTransferBuffer : public AudioTransferBuffer {
   /// @param speaker Pointer to the speaker component
   void set_sink(speaker::Speaker *speaker) { this->speaker_ = speaker; }
 #endif
-
-  void set_sink(CallbackManager<void(const std::vector<uint8_t> &)> *callback_manager) {
-    this->data_callbacks_ = callback_manager;
-  }
   /// @brief Adds a callback as the transfer buffer's sink.
   /// @param callback Pointer to the AudioSinkCallback implementation
   void set_sink(AudioSinkCallback *callback) { this->sink_callback_ = callback; }
