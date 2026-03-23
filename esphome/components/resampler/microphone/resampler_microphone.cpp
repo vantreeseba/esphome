@@ -258,7 +258,8 @@ void ResamplerMicrophone::resample_task(void *params) {
     } else {
       this_resampler->ring_buffer_ = temp_ring_buffer;
       resampler->add_source(this_resampler->ring_buffer_);
-      resampler->add_sink(&this_resampler->data_callbacks_);
+      resampler->add_sink(&this_resampler->sink_callback_);
+//       resampler->add_sink(&this_resampler->data_callbacks_);
     }
   }
 
