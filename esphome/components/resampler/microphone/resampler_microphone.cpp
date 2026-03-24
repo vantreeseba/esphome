@@ -55,15 +55,15 @@ void ResamplerMicrophone::setup() {
       return;
     }
     if (this->requires_resampling_()) {
-      std::shared_ptr<RingBuffer> temp_ring_buffer = this->ring_buffer_.lock();
+      std::shared_ptr<RingBuffer> locked_ring_buffer = this->ring_buffer_.lock();
       if (this->ring_buffer_.use_count() > 1) {
-        size_t bytes_free = temp_ring_buffer->free();
+        size_t bytes_free = locked_ring_buffer->free();
 
         if (bytes_free < data.size()) {
           xEventGroupSetBits(this->event_group_, ResamplingEventGroupBits::WARNING_FULL_RING_BUFFER);
-          temp_ring_buffer->reset();
+          locked_ring_buffer->reset();
         }
-        temp_ring_buffer->write((void *) data.data(), data.size());
+        locked_ring_buffer->write((void *) data.data(), data.size());
       }
     } else if (this->data_callbacks_.size() > 0) {
       // No resampling required, just pass through the audio
@@ -109,7 +109,7 @@ void ResamplerMicrophone::loop() {
 
   if (event_group_bits & ResamplingEventGroupBits::WARNING_FULL_RING_BUFFER) {
     xEventGroupClearBits(this->event_group_, ResamplingEventGroupBits::WARNING_FULL_RING_BUFFER);
-    this->ring_buffer_.reset();
+    //     this->ring_buffer_.reset();
     ESP_LOGW(TAG, "Ring buffer full, resetting it.");
   }
 
@@ -251,13 +251,13 @@ void ResamplerMicrophone::resample_task(void *params) {
                                    this_resampler->filters_);
 
   if (err == ESP_OK) {
-    std::shared_ptr<RingBuffer> temp_ring_buffer =
+    std::shared_ptr<RingBuffer> locked_ring_buffer =
         RingBuffer::create(source_stream_info.ms_to_bytes(this_resampler->buffer_duration_ms_));
 
-    if (temp_ring_buffer.use_count() == 0) {
+    if (locked_ring_buffer.use_count() == 0) {
       err = ESP_ERR_NO_MEM;
     } else {
-      this_resampler->ring_buffer_ = temp_ring_buffer;
+      this_resampler->ring_buffer_ = locked_ring_buffer;
       resampler->add_source(this_resampler->ring_buffer_);
       resampler->add_sink(&this_resampler->data_callbacks_);
     }
