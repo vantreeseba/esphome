@@ -55,7 +55,7 @@ void ResamplerMicrophone::setup() {
       return;
     }
     if (this->requires_resampling_()) {
-      std::shared_ptr<RingBuffer> locked_ring_buffer = this->ring_buffer_.lock();
+      std::shared_ptr<esphome::ring_buffer::RingBuffer> locked_ring_buffer = this->ring_buffer_.lock();
       if (this->ring_buffer_.use_count() > 1) {
         size_t bytes_free = locked_ring_buffer->free();
 
