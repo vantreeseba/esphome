@@ -251,8 +251,8 @@ void ResamplerMicrophone::resample_task(void *params) {
                                    this_resampler->filters_);
 
   if (err == ESP_OK) {
-    std::shared_ptr<RingBuffer> locked_ring_buffer =
-        RingBuffer::create(source_stream_info.ms_to_bytes(this_resampler->buffer_duration_ms_));
+    std::shared_ptr<esphome::ring_buffer::RingBuffer> locked_ring_buffer =
+        esphome::ring_buffer::RingBuffer::create(source_stream_info.ms_to_bytes(this_resampler->buffer_duration_ms_));
 
     if (locked_ring_buffer.use_count() == 0) {
       err = ESP_ERR_NO_MEM;
