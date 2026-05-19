@@ -68,7 +68,7 @@ class ResamplerMicrophone : public Component, public microphone::Microphone {
   StackType_t *task_stack_buffer_{nullptr};
   StaticTask_t task_stack_;
 
-  std::weak_ptr<RingBuffer> ring_buffer_;
+  std::weak_ptr<esphome::ring_buffer::RingBuffer> ring_buffer_;
 
   audio::AudioStreamInfo source_stream_info_;
 };
