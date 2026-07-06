@@ -9,6 +9,7 @@ from esphome.const import (
     CONF_MICROPHONE,
     CONF_SAMPLE_RATE,
     CONF_TASK_STACK_IN_PSRAM,
+    Framework,
     PLATFORM_ESP32,
 )
 
@@ -54,7 +55,7 @@ CONFIG_SCHEMA = cv.All(
                 CONF_BUFFER_DURATION, default="100ms"
             ): cv.positive_time_period_milliseconds,
             cv.SplitDefault(CONF_TASK_STACK_IN_PSRAM, esp32_idf=False): cv.All(
-                cv.boolean, cv.only_with_esp_idf
+                cv.boolean, cv.only_with_framework(Framework.ESP_IDF)
             ),
             cv.Optional(CONF_FILTERS, default=16): cv.int_range(min=2, max=1024),
             cv.Optional(CONF_SAMPLE_RATE, default=16000): cv.int_range(8000, 48000),
